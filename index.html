@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mess Meal Manager — Meal & Bazar Cost Splitter</title>
+<meta name="description" content="Track mess meals, bazar costs and deposits, and split the bill fairly at month end.">
+<style>
+  :root{
+    --bg:#f4f7f5; --card:#ffffff; --ink:#17251d; --muted:#64766b;
+    --brand:#0e7a4f; --brand-dark:#0a5c3c; --brand-soft:#e3f3ec;
+    --accent:#f2a93b; --red:#c0392b; --red-soft:#fdecea; --green-soft:#e6f6ee;
+    --border:#dde6e0; --radius:14px;
+    --shadow:0 2px 10px rgba(20,50,35,.06), 0 10px 30px rgba(20,50,35,.05);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"Segoe UI",system-ui,-apple-system,Roboto,"Helvetica Neue",Arial,sans-serif;background:var(--bg);color:var(--ink);line-height:1.5}
+  a{color:var(--brand)}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 16px 64px}
+
+  /* Header */
+  header{background:linear-gradient(135deg,var(--brand-dark),var(--brand));color:#fff;padding:30px 0 26px;margin-bottom:22px}
+  .header-in{max-width:1080px;margin:0 auto;padding:0 16px;display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between}
+  .logo{display:flex;align-items:center;gap:13px}
+  .logo-badge{width:48px;height:48px;border-radius:13px;background:rgba(255,255,255,.16);display:flex;align-items:center;justify-content:center;flex:none}
+  .logo-badge svg{width:27px;height:27px;fill:#fff}
+  h1{font-size:26px;letter-spacing:.2px}
+  .tagline{opacity:.88;font-size:14px}
+  .month-chip{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.35);padding:7px 14px;border-radius:999px;font-size:13.5px;font-weight:600}
+
+  /* Stat cards */
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:13px;margin-bottom:20px}
+  .stat{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow)}
+  .stat .label{font-size:12.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;font-weight:700}
+  .stat .value{font-size:24px;font-weight:800;margin-top:3px}
+  .stat .sub{font-size:12.5px;color:var(--muted)}
+  .stat .value.brand{color:var(--brand)}
+
+  /* Tabs */
+  .tabs{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:18px}
+  .tab{border:1px solid var(--border);background:var(--card);color:var(--ink);padding:9px 17px;border-radius:999px;font-size:14.5px;font-weight:600;cursor:pointer;transition:.15s}
+  .tab:hover{border-color:var(--brand);color:var(--brand)}
+  .tab.active{background:var(--brand);border-color:var(--brand);color:#fff}
+  .panel{display:none}
+  .panel.active{display:block}
+
+  .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;margin-bottom:18px}
+  .card h2{font-size:18px;margin-bottom:4px}
+  .card h3{font-size:15.5px;margin:16px 0 8px}
+  .hint{color:var(--muted);font-size:13.5px;margin-bottom:14px}
+
+  /* Forms */
+  .form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;align-items:end}
+  label{display:block;font-size:13px;font-weight:600;color:var(--muted);margin-bottom:5px}
+  input,select{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:9px;font-size:15px;background:#fff;color:var(--ink)}
+  input:focus,select:focus{outline:2px solid var(--brand-soft);border-color:var(--brand)}
+  .btn{border:none;cursor:pointer;font-weight:700;font-size:14.5px;padding:10px 20px;border-radius:9px;transition:.15s;display:inline-flex;align-items:center;gap:7px}
+  .btn-primary{background:var(--brand);color:#fff}
+  .btn-primary:hover{background:var(--brand-dark)}
+  .btn-accent{background:var(--accent);color:#3a2703}
+  .btn-accent:hover{filter:brightness(1.06)}
+  .btn-ghost{background:#fff;border:1px solid var(--border);color:var(--ink)}
+  .btn-ghost:hover{border-color:var(--brand);color:var(--brand)}
+  .btn-danger{background:var(--red);color:#fff}
+  .btn-sm{padding:5px 11px;font-size:13px;border-radius:7px}
+  .icon-btn{background:none;border:none;cursor:pointer;color:var(--red);font-size:13px;font-weight:700;padding:4px 7px;border-radius:6px}
+  .icon-btn:hover{background:var(--red-soft)}
+  .icon-btn.edit{color:var(--brand)}
+  .icon-btn.edit:hover{background:var(--brand-soft)}
+
+  /* Members */
+  .member-chips{display:flex;flex-wrap:wrap;gap:9px;margin-top:6px}
+  .chip{display:inline-flex;align-items:center;gap:8px;background:var(--brand-soft);color:var(--brand-dark);font-weight:700;padding:7px 8px 7px 14px;border-radius:999px;font-size:14.5px}
+  .chip button{background:#fff;border:1px solid var(--border);color:var(--red);width:21px;height:21px;border-radius:50%;cursor:pointer;font-size:13px;line-height:1;display:flex;align-items:center;justify-content:center}
+  .chip button:hover{background:var(--red-soft)}
+  .add-row{display:flex;gap:10px;flex-wrap:wrap}
+  .add-row input{flex:1;min-width:200px}
+
+  /* Tables */
+  .table-scroll{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-size:14.5px;min-width:520px}
+  th,td{padding:10px 11px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap}
+  th{font-size:12.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);background:#f8faf9}
+  td.num,th.num{text-align:right}
+  tr:last-child td{border-bottom:none}
+  tfoot td{font-weight:800;background:#f8faf9;border-top:2px solid var(--border)}
+  .badge{display:inline-block;padding:3px 11px;border-radius:999px;font-size:12.5px;font-weight:800}
+  .badge-owe{background:var(--red-soft);color:var(--red)}
+  .badge-back{background:var(--green-soft);color:var(--brand-dark)}
+  .badge-zero{background:#eef1ef;color:var(--muted)}
+  .type-tag{font-size:12px;font-weight:700;padding:2px 9px;border-radius:999px;background:#eef4f1;color:var(--brand-dark)}
+  .type-tag.shared{background:#fdf0d9;color:#8a5c07}
+  .empty{color:var(--muted);text-align:center;padding:22px 10px;font-size:14.5px}
+  .meal-inputs{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:6px 0 14px}
+  .note{background:#fdf8ec;border:1px solid #f0dfae;border-radius:10px;padding:12px 15px;font-size:13.5px;color:#6b5410;margin-top:14px}
+  .actions-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+  .history-item{border:1px solid var(--border);border-radius:11px;padding:14px 16px;margin-bottom:11px;background:#fbfcfb}
+  .history-item .top{display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;font-weight:800}
+  .history-item .meta{color:var(--muted);font-size:13.5px;margin-top:3px}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:30px}
+  .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(80px);background:var(--ink);color:#fff;padding:11px 22px;border-radius:999px;font-size:14.5px;font-weight:600;opacity:0;transition:.3s;z-index:50;box-shadow:0 8px 24px rgba(0,0,0,.25)}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  @media(max-width:560px){ h1{font-size:21px} .stat .value{font-size:20px} }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-in">
+    <div class="logo">
+      <div class="logo-badge" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M12 3a7 7 0 0 0-7 7c0 .5.06 1 .17 1.47L3 20a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1l-2.17-8.53c.11-.47.17-.97.17-1.47a7 7 0 0 0-7-7zm0 2a5 5 0 0 1 5 5H7a5 5 0 0 1 5-5zM5.24 19l1.1-5h11.32l1.1 5H5.24z"/></svg>
+      </div>
+      <div>
+        <h1>Mess Meal Manager</h1>
+        <div class="tagline">Meals, bazar &amp; deposits — split fairly at month end</div>
+      </div>
+    </div>
+    <div class="month-chip" id="monthChip">This month</div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat"><div class="label">Total Meals</div><div class="value" id="statMeals">0</div><div class="sub">meals this month</div></div>
+    <div class="stat"><div class="label">Meal Bazar Cost</div><div class="value" id="statMealCost">৳0</div><div class="sub">food market spending</div></div>
+    <div class="stat"><div class="label">Meal Rate</div><div class="value brand" id="statRate">৳0</div><div class="sub">cost per meal</div></div>
+    <div class="stat"><div class="label">Shared Cost</div><div class="value" id="statShared">৳0</div><div class="sub">split equally</div></div>
+    <div class="stat"><div class="label">Total Deposits</div><div class="value" id="statDeposits">৳0</div><div class="sub">money put into the fund</div></div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs" role="tablist">
+    <button class="tab active" data-tab="meals">Daily Meals</button>
+    <button class="tab" data-tab="bazar">Bazar Expenses</button>
+    <button class="tab" data-tab="deposits">Deposits</button>
+    <button class="tab" data-tab="summary">Month Summary</button>
+    <button class="tab" data-tab="members">Members</button>
+    <button class="tab" data-tab="history">History</button>
+  </div>
+
+  <!-- MEALS PANEL -->
+  <section class="panel active" id="panel-meals">
+    <div class="card">
+      <h2>Enter meals for a day</h2>
+      <p class="hint">Pick a date and enter how many meals each member ate that day. Half meals are allowed (e.g. 2.5). Saving the same date again updates it — so you can edit past days any time.</p>
+      <div class="form-grid" style="grid-template-columns:minmax(170px,240px) 1fr">
+        <div>
+          <label for="mealDate">Date</label>
+          <input type="date" id="mealDate">
+        </div>
+      </div>
+      <div class="meal-inputs" id="mealInputs"></div>
+      <button class="btn btn-primary" id="saveMealsBtn">Save this day</button>
+    </div>
+
+    <div class="card">
+      <h2>Saved days</h2>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Date</th><th class="num">Total meals</th><th>Details</th><th></th></tr></thead>
+          <tbody id="mealDaysBody"></tbody>
+        </table>
+      </div>
+      <div class="empty" id="mealDaysEmpty" style="display:none">No meal entries yet. Add the first day above.</div>
+    </div>
+  </section>
+
+  <!-- BAZAR PANEL -->
+  <section class="panel" id="panel-bazar">
+    <div class="card">
+      <h2>Add a bazar expense</h2>
+      <p class="hint"><strong>Meal bazar</strong> goes into the meal rate. <strong>Shared</strong> costs (gas, cleaning, cook's extras) are split equally between all members.</p>
+      <form id="bazarForm">
+        <div class="form-grid">
+          <div><label for="bazarDate">Date</label><input type="date" id="bazarDate" required></div>
+          <div style="grid-column:span 2"><label for="bazarItem">Item / description</label><input type="text" id="bazarItem" placeholder="e.g. Rice, dal & vegetables" required></div>
+          <div><label for="bazarCost">Cost (৳)</label><input type="number" id="bazarCost" min="1" step="any" placeholder="0" required></div>
+          <div><label for="bazarPaidBy">Paid by</label><select id="bazarPaidBy"></select></div>
+          <div><label for="bazarType">Type</label>
+            <select id="bazarType"><option value="meal">Meal bazar</option><option value="shared">Shared</option></select>
+          </div>
+          <div><button type="submit" class="btn btn-primary" style="width:100%">Add expense</button></div>
+        </div>
+      </form>
+    </div>
+    <div class="card">
+      <h2>Bazar list</h2>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Date</th><th>Item</th><th>Type</th><th>Paid by</th><th class="num">Cost</th><th></th></tr></thead>
+          <tbody id="bazarBody"></tbody>
+          <tfoot><tr><td colspan="4">Total</td><td class="num" id="bazarTotal">৳0</td><td></td></tr></tfoot>
+        </table>
+      </div>
+      <div class="empty" id="bazarEmpty" style="display:none">No bazar expenses yet.</div>
+    </div>
+  </section>
+
+  <!-- DEPOSITS PANEL -->
+  <section class="panel" id="panel-deposits">
+    <div class="card">
+      <h2>Record a deposit</h2>
+      <p class="hint">Money a member hands over to the mess fund (usually to the manager) at the start of or during the month.</p>
+      <form id="depositForm">
+        <div class="form-grid">
+          <div><label for="depDate">Date</label><input type="date" id="depDate" required></div>
+          <div><label for="depMember">Member</label><select id="depMember"></select></div>
+          <div><label for="depAmount">Amount (৳)</label><input type="number" id="depAmount" min="1" step="any" placeholder="0" required></div>
+          <div><button type="submit" class="btn btn-primary" style="width:100%">Add deposit</button></div>
+        </div>
+      </form>
+    </div>
+    <div class="card">
+      <h2>Deposit list</h2>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Date</th><th>Member</th><th class="num">Amount</th><th></th></tr></thead>
+          <tbody id="depositBody"></tbody>
+          <tfoot><tr><td colspan="2">Total</td><td class="num" id="depositTotal">৳0</td><td></td></tr></tfoot>
+        </table>
+      </div>
+      <div class="empty" id="depositEmpty" style="display:none">No deposits recorded yet.</div>
+    </div>
+  </section>
+
+  <!-- SUMMARY PANEL -->
+  <section class="panel" id="panel-summary">
+    <div class="card">
+      <h2>Month-end summary</h2>
+      <p class="hint">Meal rate = total meal bazar cost ÷ total meals. Shared cost is split equally. Bazar a member paid for out of pocket counts as money they put in — exactly like a deposit.</p>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr><th>Member</th><th class="num">Meals</th><th class="num">Meal cost</th><th class="num">Shared share</th><th class="num">Total cost</th><th class="num">Deposited</th><th class="num">Bazar paid</th><th class="num">Balance</th><th>Status</th></tr>
+          </thead>
+          <tbody id="summaryBody"></tbody>
+          <tfoot id="summaryFoot"></tfoot>
+        </table>
+      </div>
+      <div class="note"><strong>How to settle:</strong> members with a red <em>Owes</em> badge pay that amount to the manager; members with a green <em>Gets back</em> badge receive that amount back from the fund.</div>
+      <div class="actions-row">
+        <button class="btn btn-accent" id="closeMonthBtn">Close month &amp; archive</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- MEMBERS PANEL -->
+  <section class="panel" id="panel-members">
+    <div class="card">
+      <h2>Mess members</h2>
+      <p class="hint">Everyone who shares meals in this mess. Removing a member keeps their past records out of new entries, so close the month first if someone is leaving for good.</p>
+      <form id="memberForm" class="add-row">
+        <input type="text" id="memberName" placeholder="New member's name" required>
+        <button type="submit" class="btn btn-primary">Add member</button>
+      </form>
+      <div class="member-chips" id="memberChips"></div>
+    </div>
+    <div class="card">
+      <h2>Data</h2>
+      <p class="hint">Everything is saved in this browser (localStorage) — no account, no server.</p>
+      <div class="actions-row" style="margin-top:0">
+        <button class="btn btn-ghost" id="reseedBtn">Restore sample data</button>
+        <button class="btn btn-danger" id="wipeBtn">Delete all data</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- HISTORY PANEL -->
+  <section class="panel" id="panel-history">
+    <div class="card">
+      <h2>Closed months</h2>
+      <p class="hint">Summaries archived with “Close month &amp; archive”. They stay here even after the current month is reset.</p>
+      <div id="historyList"></div>
+      <div class="empty" id="historyEmpty">No closed months yet.</div>
+    </div>
+  </section>
+
+  <footer>Mess Meal Manager · Built by Nafiz Bin Azad · Data stays in your browser</footer>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  "use strict";
+  var KEY = "messMealManager_v1";
+
+  /* ---------- helpers ---------- */
+  function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+  function todayStr(d){ d = d || new Date(); var m = String(d.getMonth()+1).padStart(2,"0"), day = String(d.getDate()).padStart(2,"0"); return d.getFullYear()+"-"+m+"-"+day; }
+  function monthDay(day){ var d = new Date(); var m = String(d.getMonth()+1).padStart(2,"0"); return d.getFullYear()+"-"+m+"-"+String(day).padStart(2,"0"); }
+  function fmtDate(s){ if(!s) return ""; var p = s.split("-"); var months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]; return p[2]+" "+months[parseInt(p[1],10)-1]+" "+p[0]; }
+  function money(n){ var r = Math.round(n*100)/100; var s = (r % 1 === 0) ? String(Math.round(r)) : r.toFixed(2); return "৳" + Number(s).toLocaleString("en-IN",{maximumFractionDigits:2}); }
+  function num(n){ return (Math.round(n*100)/100).toLocaleString("en-IN",{maximumFractionDigits:2}); }
+  function esc(s){ return String(s).replace(/[&<>"']/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); }
+  function toast(msg){ var t = document.getElementById("toast"); t.textContent = msg; t.classList.add("show"); setTimeout(function(){ t.classList.remove("show"); }, 2200); }
+
+  /* ---------- seed ---------- */
+  function seed(){
+    var members = [
+      {id:"m1", name:"Arif"},
+      {id:"m2", name:"Rakib"},
+      {id:"m3", name:"Tanvir"},
+      {id:"m4", name:"Shakil"}
+    ];
+    // 5 days of meals: Arif 15, Rakib 12.5, Tanvir 15, Shakil 10  (total 52.5)
+    var perDay = [
+      {m1:3, m2:2.5, m3:3, m4:2},
+      {m1:3, m2:2.5, m3:3, m4:2},
+      {m1:3, m2:2.5, m3:3, m4:2},
+      {m1:3, m2:2.5, m3:3, m4:2},
+      {m1:3, m2:2.5, m3:3, m4:2}
+    ];
+    var meals = {};
+    perDay.forEach(function(row, i){ meals[monthDay(i+1)] = row; });
+
+    var bazar = [
+      {id:uid()+"1", date:monthDay(1), item:"Rice & dal (25 kg sack)", cost:1800, paidBy:"m1", type:"meal"},
+      {id:uid()+"2", date:monthDay(2), item:"Chicken & eggs", cost:2000, paidBy:"m2", type:"meal"},
+      {id:uid()+"3", date:monthDay(3), item:"Fish & fresh vegetables", cost:1800, paidBy:"m1", type:"meal"},
+      {id:uid()+"4", date:monthDay(4), item:"Beef, spices & vegetables", cost:1600, paidBy:"m2", type:"meal"},
+      {id:uid()+"5", date:monthDay(2), item:"Gas refill", cost:800, paidBy:"m1", type:"shared"},
+      {id:uid()+"6", date:monthDay(5), item:"Cleaning items & tissue", cost:400, paidBy:"m1", type:"shared"}
+    ];
+    var deposits = [
+      {id:uid()+"a", date:monthDay(1), memberId:"m1", amount:500},
+      {id:uid()+"b", date:monthDay(1), memberId:"m2", amount:1000},
+      {id:uid()+"c", date:monthDay(1), memberId:"m3", amount:1500},
+      {id:uid()+"d", date:monthDay(1), memberId:"m4", amount:1000}
+    ];
+    return { members:members, meals:meals, bazar:bazar, deposits:deposits, history:[] };
+  }
+
+  /* ---------- state ---------- */
+  var state;
+  try {
+    var raw = localStorage.getItem(KEY);
+    state = raw ? JSON.parse(raw) : seed();
+    if (!state || !Array.isArray(state.members)) state = seed();
+  } catch(e){ state = seed(); }
+  function save(){ localStorage.setItem(KEY, JSON.stringify(state)); }
+  save();
+
+  function memberName(id){ var m = state.members.find(function(x){ return x.id === id; }); return m ? m.name : "(removed)"; }
+
+  /* ---------- calculations ---------- */
+  function calc(){
+    var totalMeals = 0, memberMeals = {};
+    state.members.forEach(function(m){ memberMeals[m.id] = 0; });
+    Object.keys(state.meals).forEach(function(date){
+      var row = state.meals[date];
+      Object.keys(row).forEach(function(mid){
+        var v = parseFloat(row[mid]) || 0;
+        totalMeals += v;
+        if (memberMeals[mid] !== undefined) memberMeals[mid] += v;
+      });
+    });
+    var mealCost = 0, sharedCost = 0, paid = {};
+    state.members.forEach(function(m){ paid[m.id] = 0; });
+    state.bazar.forEach(function(b){
+      if (b.type === "shared") sharedCost += b.cost; else mealCost += b.cost;
+      if (paid[b.paidBy] !== undefined) paid[b.paidBy] += b.cost;
+    });
+    var deposits = {}, totalDeposits = 0;
+    state.members.forEach(function(m){ deposits[m.id] = 0; });
+    state.deposits.forEach(function(d){
+      totalDeposits += d.amount;
+      if (deposits[d.memberId] !== undefined) deposits[d.memberId] += d.amount;
+    });
+    var rate = totalMeals > 0 ? mealCost / totalMeals : 0;
+    var sharedShare = state.members.length > 0 ? sharedCost / state.members.length : 0;
+    var rows = state.members.map(function(m){
+      var mc = memberMeals[m.id] * rate;
+      var total = mc + sharedShare;
+      var contribution = deposits[m.id] + paid[m.id];
+      return {
+        id:m.id, name:m.name, meals:memberMeals[m.id], mealCost:mc,
+        sharedShare:sharedShare, totalCost:total,
+        deposit:deposits[m.id], paid:paid[m.id],
+        balance: contribution - total
+      };
+    });
+    return { totalMeals:totalMeals, mealCost:mealCost, sharedCost:sharedCost, totalDeposits:totalDeposits, rate:rate, sharedShare:sharedShare, rows:rows, totalBazar:mealCost+sharedCost };
+  }
+
+  /* ---------- rendering ---------- */
+  var $ = function(id){ return document.getElementById(id); };
+
+  function renderStats(){
+    var c = calc();
+    $("statMeals").textContent = num(c.totalMeals);
+    $("statMealCost").textContent = money(c.mealCost);
+    $("statRate").textContent = money(c.rate);
+    $("statShared").textContent = money(c.sharedCost);
+    $("statDeposits").textContent = money(c.totalDeposits);
+    var d = new Date();
+    $("monthChip").textContent = d.toLocaleString("en-US",{month:"long"}) + " " + d.getFullYear();
+  }
+
+  function renderMembers(){
+    $("memberChips").innerHTML = state.members.map(function(m){
+      return '<span class="chip">' + esc(m.name) + '<button type="button" data-remove-member="' + m.id + '" title="Remove member" aria-label="Remove ' + esc(m.name) + '">&times;</button></span>';
+    }).join("") || '<span class="hint">No members yet — add the first one above.</span>';
+    var opts = state.members.map(function(m){ return '<option value="' + m.id + '">' + esc(m.name) + '</option>'; }).join("");
+    $("bazarPaidBy").innerHTML = opts;
+    $("depMember").innerHTML = opts;
+  }
+
+  function renderMealInputs(){
+    var date = $("mealDate").value || todayStr();
+    var existing = state.meals[date] || {};
+    $("mealInputs").innerHTML = state.members.map(function(m){
+      var v = existing[m.id] !== undefined ? existing[m.id] : "";
+      return '<div><label for="meal_' + m.id + '">' + esc(m.name) + ' — meals</label>' +
+        '<input type="number" id="meal_' + m.id + '" data-meal-for="' + m.id + '" min="0" step="0.5" placeholder="0" value="' + v + '"></div>';
+    }).join("") || '<p class="hint">Add members first (Members tab).</p>';
+  }
+
+  function renderMealDays(){
+    var dates = Object.keys(state.meals).sort().reverse();
+    $("mealDaysEmpty").style.display = dates.length ? "none" : "block";
+    $("mealDaysBody").innerHTML = dates.map(function(date){
+      var row = state.meals[date], total = 0, parts = [];
+      state.members.forEach(function(m){
+        var v = parseFloat(row[m.id]) || 0;
+        if (v > 0){ total += v; parts.push(esc(m.name) + ": " + num(v)); }
+      });
+      return '<tr><td><strong>' + fmtDate(date) + '</strong></td><td class="num">' + num(total) + '</td><td>' + (parts.join(", ") || "—") + '</td>' +
+        '<td><button class="icon-btn edit" data-edit-day="' + date + '">Edit</button><button class="icon-btn" data-delete-day="' + date + '">Delete</button></td></tr>';
+    }).join("");
+  }
+
+  function renderBazar(){
+    var sorted = state.bazar.slice().sort(function(a,b){ return a.date < b.date ? 1 : -1; });
+    $("bazarEmpty").style.display = sorted.length ? "none" : "block";
+    $("bazarBody").innerHTML = sorted.map(function(b){
+      return '<tr><td>' + fmtDate(b.date) + '</td><td>' + esc(b.item) + '</td>' +
+        '<td><span class="type-tag' + (b.type === "shared" ? " shared" : "") + '">' + (b.type === "shared" ? "Shared" : "Meal bazar") + '</span></td>' +
+        '<td>' + esc(memberName(b.paidBy)) + '</td><td class="num">' + money(b.cost) + '</td>' +
+        '<td><button class="icon-btn" data-delete-bazar="' + b.id + '">Delete</button></td></tr>';
+    }).join("");
+    $("bazarTotal").textContent = money(calc().totalBazar);
+  }
+
+  function renderDeposits(){
+    var sorted = state.deposits.slice().sort(function(a,b){ return a.date < b.date ? 1 : -1; });
+    $("depositEmpty").style.display = sorted.length ? "none" : "block";
+    $("depositBody").innerHTML = sorted.map(function(d){
+      return '<tr><td>' + fmtDate(d.date) + '</td><td>' + esc(memberName(d.memberId)) + '</td><td class="num">' + money(d.amount) + '</td>' +
+        '<td><button class="icon-btn" data-delete-deposit="' + d.id + '">Delete</button></td></tr>';
+    }).join("");
+    $("depositTotal").textContent = money(calc().totalDeposits);
+  }
+
+  function renderSummary(){
+    var c = calc();
+    $("summaryBody").innerHTML = c.rows.map(function(r){
+      var badge, bal = Math.round(r.balance * 100) / 100;
+      if (bal < -0.004) badge = '<span class="badge badge-owe">Owes ' + money(-bal) + '</span>';
+      else if (bal > 0.004) badge = '<span class="badge badge-back">Gets back ' + money(bal) + '</span>';
+      else badge = '<span class="badge badge-zero">Settled</span>';
+      return '<tr><td><strong>' + esc(r.name) + '</strong></td><td class="num">' + num(r.meals) + '</td><td class="num">' + money(r.mealCost) + '</td>' +
+        '<td class="num">' + money(r.sharedShare) + '</td><td class="num">' + money(r.totalCost) + '</td><td class="num">' + money(r.deposit) + '</td>' +
+        '<td class="num">' + money(r.paid) + '</td><td class="num"><strong>' + (bal < 0 ? "−" : "") + money(Math.abs(bal)).replace("−","") + '</strong></td><td>' + badge + '</td></tr>';
+    }).join("");
+    var tMeals = c.totalMeals, tCost = c.rows.reduce(function(s,r){ return s + r.totalCost; }, 0);
+    var tDep = c.rows.reduce(function(s,r){ return s + r.deposit; }, 0), tPaid = c.rows.reduce(function(s,r){ return s + r.paid; }, 0);
+    var tBal = c.rows.reduce(function(s,r){ return s + r.balance; }, 0);
+    $("summaryFoot").innerHTML = '<tr><td>Total</td><td class="num">' + num(tMeals) + '</td><td class="num">' + money(c.mealCost) + '</td><td class="num">' + money(c.sharedCost) + '</td>' +
+      '<td class="num">' + money(tCost) + '</td><td class="num">' + money(tDep) + '</td><td class="num">' + money(tPaid) + '</td><td class="num">' + money(tBal) + '</td><td></td></tr>';
+  }
+
+  function renderHistory(){
+    $("historyEmpty").style.display = state.history.length ? "none" : "block";
+    $("historyList").innerHTML = state.history.slice().reverse().map(function(h){
+      var people = h.rows.map(function(r){
+        var bal = Math.round(r.balance * 100) / 100;
+        var status = bal < -0.004 ? "owes " + money(-bal) : (bal > 0.004 ? "gets back " + money(bal) : "settled");
+        return esc(r.name) + " — " + num(r.meals) + " meals, " + status;
+      }).join(" · ");
+      return '<div class="history-item"><div class="top"><span>' + esc(h.monthLabel) + '</span><span>' + money(h.totalBazar) + '</span></div>' +
+        '<div class="meta">Total meals: ' + num(h.totalMeals) + ' · Meal rate: ' + money(h.rate) + ' · Meal bazar: ' + money(h.mealCost) + ' · Shared: ' + money(h.sharedCost) + ' · Deposits: ' + money(h.totalDeposits) + '</div>' +
+        '<div class="meta">' + people + '</div></div>';
+    }).join("");
+  }
+
+  function renderAll(){ renderStats(); renderMembers(); renderMealInputs(); renderMealDays(); renderBazar(); renderDeposits(); renderSummary(); renderHistory(); }
+
+  /* ---------- tabs ---------- */
+  document.querySelectorAll(".tab").forEach(function(tab){
+    tab.addEventListener("click", function(){
+      document.querySelectorAll(".tab").forEach(function(t){ t.classList.remove("active"); });
+      document.querySelectorAll(".panel").forEach(function(p){ p.classList.remove("active"); });
+      tab.classList.add("active");
+      $("panel-" + tab.dataset.tab).classList.add("active");
+    });
+  });
+
+  /* ---------- events: members ---------- */
+  $("memberForm").addEventListener("submit", function(e){
+    e.preventDefault();
+    var name = $("memberName").value.trim();
+    if (!name) return;
+    state.members.push({id:uid(), name:name});
+    $("memberName").value = "";
+    save(); renderAll(); toast(name + " added");
+  });
+
+  document.addEventListener("click", function(e){
+    var rm = e.target.closest("[data-remove-member]");
+    if (rm){
+      var id = rm.getAttribute("data-remove-member");
+      var m = state.members.find(function(x){ return x.id === id; });
+      if (confirm("Remove " + (m ? m.name : "this member") + "? Their saved meal/bazar/deposit rows stay in old records but they will no longer appear in new entries or the summary.")){
+        state.members = state.members.filter(function(x){ return x.id !== id; });
+        save(); renderAll(); toast("Member removed");
+      }
+      return;
+    }
+    var ed = e.target.closest("[data-edit-day]");
+    if (ed){ $("mealDate").value = ed.getAttribute("data-edit-day"); renderMealInputs(); window.scrollTo({top:0, behavior:"smooth"}); return; }
+    var dd = e.target.closest("[data-delete-day]");
+    if (dd){
+      var date = dd.getAttribute("data-delete-day");
+      if (confirm("Delete meals for " + fmtDate(date) + "?")){ delete state.meals[date]; save(); renderAll(); toast("Day deleted"); }
+      return;
+    }
+    var db = e.target.closest("[data-delete-bazar]");
+    if (db){ state.bazar = state.bazar.filter(function(b){ return b.id !== db.getAttribute("data-delete-bazar"); }); save(); renderAll(); toast("Expense deleted"); return; }
+    var dp = e.target.closest("[data-delete-deposit]");
+    if (dp){ state.deposits = state.deposits.filter(function(d){ return d.id !== dp.getAttribute("data-delete-deposit"); }); save(); renderAll(); toast("Deposit deleted"); return; }
+  });
+
+  /* ---------- events: meals ---------- */
+  $("mealDate").addEventListener("change", renderMealInputs);
+  $("saveMealsBtn").addEventListener("click", function(){
+    var date = $("mealDate").value;
+    if (!date){ toast("Pick a date first"); return; }
+    var row = {}, any = false;
+    document.querySelectorAll("[data-meal-for]").forEach(function(inp){
+      var v = parseFloat(inp.value) || 0;
+      row[inp.getAttribute("data-meal-for")] = v;
+      if (v > 0) any = true;
+    });
+    if (!any && !confirm("All meals are 0 for this day. Save anyway?")) return;
+    state.meals[date] = row;
+    save(); renderAll(); toast("Meals saved for " + fmtDate(date));
+  });
+
+  /* ---------- events: bazar ---------- */
+  $("bazarForm").addEventListener("submit", function(e){
+    e.preventDefault();
+    var cost = parseFloat($("bazarCost").value) || 0;
+    if (cost <= 0){ toast("Enter a valid cost"); return; }
+    state.bazar.push({ id:uid(), date:$("bazarDate").value || todayStr(), item:$("bazarItem").value.trim(), cost:cost, paidBy:$("bazarPaidBy").value, type:$("bazarType").value });
+    $("bazarItem").value = ""; $("bazarCost").value = "";
+    save(); renderAll(); toast("Bazar expense added");
+  });
+
+  /* ---------- events: deposits ---------- */
+  $("depositForm").addEventListener("submit", function(e){
+    e.preventDefault();
+    var amt = parseFloat($("depAmount").value) || 0;
+    if (amt <= 0){ toast("Enter a valid amount"); return; }
+    state.deposits.push({ id:uid(), date:$("depDate").value || todayStr(), memberId:$("depMember").value, amount:amt });
+    $("depAmount").value = "";
+    save(); renderAll(); toast("Deposit recorded");
+  });
+
+  /* ---------- events: close month ---------- */
+  $("closeMonthBtn").addEventListener("click", function(){
+    var c = calc();
+    if (c.totalMeals === 0 && state.bazar.length === 0 && state.deposits.length === 0){ toast("Nothing to close — add some data first"); return; }
+    var d = new Date();
+    var defLabel = d.toLocaleString("en-US",{month:"long"}) + " " + d.getFullYear();
+    var label = prompt("Month name for the archive:", defLabel);
+    if (label === null) return;
+    label = label.trim() || defLabel;
+    if (!confirm("Close \"" + label + "\"? The summary will be archived and meals, bazar and deposits will be cleared for a fresh month. Members and history are kept.")) return;
+    state.history.push({
+      id:uid(), monthLabel:label, closedAt:todayStr(),
+      totalMeals:c.totalMeals, mealCost:c.mealCost, sharedCost:c.sharedCost,
+      totalBazar:c.totalBazar, totalDeposits:c.totalDeposits, rate:c.rate,
+      rows:c.rows.map(function(r){ return {name:r.name, meals:r.meals, mealCost:r.mealCost, sharedShare:r.sharedShare, totalCost:r.totalCost, deposit:r.deposit, paid:r.paid, balance:r.balance}; })
+    });
+    state.meals = {}; state.bazar = []; state.deposits = [];
+    save(); renderAll(); toast(label + " archived — fresh month started");
+  });
+
+  /* ---------- events: data ---------- */
+  $("reseedBtn").addEventListener("click", function(){
+    if (!confirm("Replace ALL current data with the sample data?")) return;
+    var hist = state.history;
+    state = seed(); state.history = hist;
+    save(); renderAll(); toast("Sample data restored");
+  });
+  $("wipeBtn").addEventListener("click", function(){
+    if (!confirm("Delete ALL data, including history? This cannot be undone.")) return;
+    state = { members:[], meals:{}, bazar:[], deposits:[], history:[] };
+    save(); renderAll(); toast("All data deleted");
+  });
+
+  /* ---------- init ---------- */
+  $("mealDate").value = todayStr();
+  $("bazarDate").value = todayStr();
+  $("depDate").value = todayStr();
+  renderAll();
+})();
+</script>
+</body>
+</html>
